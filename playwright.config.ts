@@ -6,7 +6,7 @@ dotenv.config();
 function resolveBaseUrl() : string{
 
   if (process.env.BASE_URL) return process.env.BASE_URL;
-  const env = (process.env.ENV || process.env.TEST_ENV || (process.env.CI ? 'uat' : 'qa')).toLowerCase();
+  const env = (process.env.TEST_ENV || process.env.ENV || (process.env.CI ? 'uat' : 'qa')).toLowerCase();
   const ciSafeDefault = process.env.UAT_BASE_URL || process.env.PROD_BASE_URL || 'http://app.thetestingacademy.com';
   switch (env) {
     case 'dev':
