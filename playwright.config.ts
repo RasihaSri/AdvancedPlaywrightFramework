@@ -6,7 +6,8 @@ dotenv.config();
 function resolveBaseUrl() : string{
 
   if (process.env.BASE_URL) return process.env.BASE_URL;
-  const env = (process.env.ENV || process.env.TEST_ENV || 'qa').toLowerCase();
+  const env = (process.env.ENV || process.env.TEST_ENV || (process.env.CI ? 'uat' : 'qa')).toLowerCase();
+  const ciSafeDefault = process.env.UAT_BASE_URL || process.env.PROD_BASE_URL || 'http://app.thetestingacademy.com';
   switch (env) {
     case 'dev':
     case 'local':
@@ -21,11 +22,11 @@ function resolveBaseUrl() : string{
     case 'production':
       return process.env.PROD_BASE_URL || 'http://app.thetestingacademy.com';
     case 'qa':
-      return process.env.QA_BASE_URL || 'http://qa.thetestingacademy.com';
+      return process.env.QA_BASE_URL || (process.env.CI ? ciSafeDefault : 'http://qa.thetestingacademy.com');
  
     default:
-      console.warn(`Unknown environment "${env}", defaulting to QA base URL.`);
-      return process.env.QA_BASE_URL || 'http://qa.thetestingacademy.com';
+      console.warn(`Unknown environment "${env}", defaulting to ${process.env.CI ? 'CI-safe' : 'QA'} base URL.`);
+      return process.env.CI ? ciSafeDefault : (process.env.QA_BASE_URL || 'http://qa.thetestingacademy.com');
   }
 }
 
