@@ -6,11 +6,13 @@ dotenv.config();
 function resolveBaseUrl() : string{
 
   if (process.env.BASE_URL) return process.env.BASE_URL;
-  const env = (process.env.ENV || 'qa').toLowerCase();
+  const env = (process.env.ENV || process.env.TEST_ENV || 'qa').toLowerCase();
   switch (env) {
     case 'dev':
     case 'local':
       return process.env.DEV_BASE_URL || 'http://localhost:3000';
+    case 'uat':
+      return process.env.UAT_BASE_URL || process.env.PROD_BASE_URL || 'http://app.thetestingacademy.com';
     case 'stg':
     case 'stage':
     case 'staging':
