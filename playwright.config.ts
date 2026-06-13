@@ -1,32 +1,27 @@
 import { defineConfig, devices } from '@playwright/test';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-function resolveBaseUrl() : string{
-
+function resolveBaseURL(): string {
   if (process.env.BASE_URL) return process.env.BASE_URL;
-  const env = (process.env.TEST_ENV || process.env.ENV || (process.env.CI ? 'uat' : 'qa')).toLowerCase();
-  const ciSafeDefault = process.env.UAT_BASE_URL || process.env.PROD_BASE_URL || 'http://app.thetestingacademy.com';
+  const env = (process.env.TTA_ENV || 'qa').toLowerCase();
   switch (env) {
+    case 'api':
+      return process.env.API_BASE_URL || 'https://restful-booker.herokuapp.com';
     case 'dev':
     case 'local':
       return process.env.DEV_BASE_URL || 'http://localhost:3000';
-    case 'uat':
-      return process.env.UAT_BASE_URL || process.env.PROD_BASE_URL || 'http://app.thetestingacademy.com';
     case 'stg':
     case 'stage':
     case 'staging':
-      return process.env.STG_BASE_URL || 'http://stage.thetestingacademy.com';
+      return process.env.STG_BASE_URL || 'https://stage.thetestingacademy.com';
     case 'prod':
     case 'production':
-      return process.env.PROD_BASE_URL || 'http://app.thetestingacademy.com';
+      return process.env.PROD_BASE_URL || 'https://app.thetestingacademy.com';
     case 'qa':
-      return process.env.QA_BASE_URL || (process.env.CI ? ciSafeDefault : 'http://qa.thetestingacademy.com');
- 
     default:
-      console.warn(`Unknown environment "${env}", defaulting to ${process.env.CI ? 'CI-safe' : 'QA'} base URL.`);
-      return process.env.CI ? ciSafeDefault : (process.env.QA_BASE_URL || 'http://qa.thetestingacademy.com');
+      return process.env.QA_BASE_URL || 'https://app.thetestingacademy.com';
   }
 }
 
@@ -36,37 +31,60 @@ export default defineConfig({
   testDir: './src/tests',
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  /* Run tests in files in parallel */
   fullyParallel: true,
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
-  forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
+  forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: isCI ? 4 : 6,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
+  workers: isCI ? 4 : undefined,
   reporter: [
-    ['./src/utils/CustomReporter.ts', { outputFile: 'reports/custom-report.json' }],
-    ['html', { outputFolder: 'playwright-report', open: 'never' }],
-    ['json', { outputFile: 'test-results/report.json' }],
-    ['allure-playwright', { outputFolder: 'allure-results' }],
-    ['list']
+    ['./src/utils/CustomReporter.ts'],
+    ['html', { outputFolder: 'playwright-report' }],
+    ['json', { outputFile: 'test-results/results.json' }],
+    ['allure-playwright', {
+      resultsDir: 'allure-results',
+      reportName: 'TTACart Automation Report',
+      environmentInfo: {
+        Environment: process.env.TTA_ENV || 'qa',
+        BaseURL: resolveBaseURL(),
+        Node: process.version,
+        OS: process.platform,
+        CI: String(isCI),
+      },
+      categories: [
+        { name: 'Assertion failures', matchedStatuses: ['failed'] },
+        { name: 'Broken tests / errors', matchedStatuses: ['broken'] },
+        {
+          name: 'Timeouts',
+          matchedStatuses: ['broken', 'failed'],
+          messageRegex: '.*Timeout.*',
+        },
+      ],
+    }],
+    ['list'],
   ],
-  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Base URL to use in actions like `await page.goto('')`. */
-    baseURL: resolveBaseUrl(),
+    baseURL: resolveBaseURL(),
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: 'on',
     trace: 'on-first-retry',
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
+    extraHTTPHeaders: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
   },
-  /* Configure projects for major browsers */
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
-    { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },
+    {
+      name: 'api',
+      testMatch: /src\/tests\/apiTests\/.*\.spec\.ts/,
+    },
+    {
+      name: 'chromium',
+      testIgnore: /src\/tests\/apiTests\/.*\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    // { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    // { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },
   ],
 });
